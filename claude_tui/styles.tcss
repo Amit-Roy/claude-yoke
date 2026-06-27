@@ -234,3 +234,47 @@ EditorScreen {
 #editor-status {
     height: 1;
 }
+
+/* ---- permission modal --------------------------------------------------- */
+PermissionScreen {
+    align: center middle;
+}
+
+#perm-box {
+    width: 70%;
+    max-width: 90;
+    height: auto;
+    background: $panel;
+    border: thick #FFB454;
+    padding: 1 2;
+}
+
+#perm-title {
+    margin-bottom: 1;
+}
+
+#perm-tool {
+    height: auto;
+}
+
+#perm-summary {
+    height: auto;
+    margin-top: 1;
+    padding: 0 1;
+    border-left: thick #2A323C;
+}
+
+#perm-buttons {
+    height: auto;
+    margin-top: 1;
+    align: left middle;
+}
+
+#perm-buttons Button {
+    margin-right: 2;
+}
+
+#perm-hint {
+    margin-top: 1;
+    color: $text-muted;
+}

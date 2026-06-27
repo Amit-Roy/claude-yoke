@@ -36,6 +36,7 @@ async def run() -> None:
 
         bar = region(app, "#activity-bar")
         left = region(app, "#left-column")
+        splitter = region(app, "#main-splitter")
         main = region(app, "#main")
         sidebar = region(app, "#sidebar-host")
         tokens = region(app, "#tokens-panel")
@@ -51,9 +52,11 @@ async def run() -> None:
         check("activity bar is a narrow fixed column", 18 <= bar.width <= 28,
               f"w={bar.width}")
         check("left column sits right of the activity bar", left.x == bar.x + bar.width)
-        check("main chat is the rightmost pane", main.x == left.x + left.width)
+        check("a resize handle separates the columns",
+              splitter.x == left.x + left.width and splitter.width == 1)
+        check("main chat is the rightmost pane", main.x == splitter.x + splitter.width)
         check("main chat occupies ~the right half",
-              abs(main.width - left.width) <= 2, f"main={main.width} left={left.width}")
+              abs(main.width - left.width) <= 3, f"main={main.width} left={left.width}")
 
         # Left side is split vertically: sidebar (top) → tokens → agents (bottom).
         check("sidebar is at the top of the left column", sidebar.y <= tokens.y,

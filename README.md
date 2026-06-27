@@ -39,6 +39,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
   filtered out) with a built-in modal editor (Ctrl+S to save).
 - **Full transcript rendering** — text, thinking, tool calls and tool results,
   identical for live and replayed sessions.
+- **Tool-permission prompts** — when Claude needs approval for a tool, a dialog
+  bubbles up (Allow once / Allow for session / Deny) instead of the request
+  being silently auto-denied.
 - **Model & permission switching** — dropdowns mapped straight onto
   `claude --model` / `claude --permission-mode`.
 - **Distinctive "Cockpit" theme** — a deliberate instrument-panel visual identity
@@ -132,24 +135,32 @@ python -m venv .venv
 | `Ctrl+S` | Save (in the file editor) |
 
 The **model** and **permission-mode** dropdowns map straight onto
-`claude --model` / `claude --permission-mode`. The default permission mode is
-`default` (tools needing approval are auto-denied in headless mode rather than
-running unattended); switch to `acceptEdits` to let Claude edit files.
+`claude --model` / `claude --permission-mode`. In the default mode, when Claude
+wants to use a tool that needs approval a **permission dialog pops up** —
+**Allow once** (`a`), **Allow for session** (`s`), or **Deny** (`d`/`Esc`).
+Pick `acceptEdits` to let Claude edit files without asking, or
+`bypassPermissions` to never be prompted.
 
 ## How it works
 
-Each turn runs:
+Each turn drives the CLI in **bidirectional** stream-json mode:
 
 ```
-claude -p "<prompt>" --output-format stream-json --verbose \
+claude --input-format stream-json --output-format stream-json --verbose \
+       --permission-prompt-tool stdio \
        [--resume <session-id>] [--model <model>] [--permission-mode <mode>]
 ```
 
-`core/claude_client.py` spawns that subprocess with `asyncio`, reads stdout line
-by line and yields each JSON event. `app.py` dispatches events to the panels:
-`system/init` captures the session id (for `--resume`), `assistant` blocks render
-text / thinking / tool calls and feed the token gauge, `Task` tool calls populate
-the Agents panel, and `result` commits authoritative tokens and cost.
+`core/claude_client.py` spawns that subprocess with `asyncio`, writes the user's
+turn to its **stdin** as a stream-json `user` message (keeping stdin open), and
+reads stdout line by line yielding each JSON event. Because stdin stays open, the
+CLI can ask to use a tool mid-turn: it sends a `control_request`, the app pops a
+`PermissionScreen`, and the answer goes back as a `control_response` — so
+**questions actually bubble up** instead of being silently auto-denied. `app.py`
+dispatches the rest to the panels: `system/init` captures the session id (for
+`--resume`), `assistant` blocks render text / thinking / tool calls and feed the
+token gauge, `Task` tool calls populate the Agents panel, and `result` commits
+authoritative tokens and cost.
 
 ## Project structure
 
@@ -169,11 +180,15 @@ claude_tui/
     info_panels.py    # Tokens + Agents panels
     chat.py           # toolbar + transcript + composer
     editor.py         # modal file editor
+    permission.py     # modal tool-permission prompt (allow / deny)
     splitter.py       # draggable divider to resize the panes
   styles.tcss         # layout + theme
 tests/
   smoke_test.py       # headless: compose, view switching, event handling
   stream_probe.py     # real subprocess streaming against a fake CLI
+  perm_probe.py       # tool-permission control protocol (allow/deny/session)
+  fake_cli.py         # stand-in CLI emitting stream-json events
+  fake_perm_cli.py    # stand-in CLI that drives the permission control protocol
   layout_probe.py     # asserts pane geometry, writes screenshot.svg
   showcase.py         # drives a realistic state, writes the docs screenshot
 ```
@@ -183,6 +198,7 @@ tests/
 ```powershell
 .venv/Scripts/python tests/smoke_test.py
 .venv/Scripts/python tests/stream_probe.py
+.venv/Scripts/python tests/perm_probe.py
 .venv/Scripts/python tests/layout_probe.py
 ```
 

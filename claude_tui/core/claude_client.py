@@ -1,13 +1,19 @@
-"""Async wrapper around the ``claude`` CLI in streaming-JSON print mode.
+"""Async wrapper around the ``claude`` CLI in bidirectional stream-json mode.
 
 We drive the real Claude Code engine as a subprocess::
 
-    claude -p "<prompt>" --output-format stream-json --verbose \
-           [--resume <session-id>] [--model <model>] \
-           [--permission-mode <mode>]
+    claude --input-format stream-json --output-format stream-json --verbose \
+           --permission-prompt-tool stdio \
+           [--resume <session-id>] [--model <model>] [--permission-mode <mode>]
 
-and yield each parsed JSON event. This gives us Claude Code's full tool/MCP/
-permission machinery for free; the TUI is purely a front-end.
+The user's turn is written to the process's stdin as a stream-json ``user``
+message (rather than passed as ``-p``), which keeps stdin open so the CLI can
+ask us to approve tools mid-turn. Tool-permission prompts arrive as
+``control_request`` events; we surface them to the UI and write the user's
+answer back as a ``control_response``. This is what makes questions/permission
+prompts "bubble up" instead of being silently auto-denied.
+
+The wire shapes below were captured from claude 2.1.172.
 """
 
 from __future__ import annotations
@@ -33,18 +39,21 @@ class ClaudeClient:
 
     def _build_args(
         self,
-        prompt: str,
         model: str,
         permission_mode: str,
         resume: str | None,
     ) -> list[str]:
         args = [
             self.cli_path,
-            "-p",
-            prompt,
+            "--input-format",
+            "stream-json",
             "--output-format",
             "stream-json",
             "--verbose",
+            # Route tool-permission prompts to us over the control protocol
+            # instead of auto-denying them in headless mode.
+            "--permission-prompt-tool",
+            "stdio",
         ]
         if resume:
             args += ["--resume", resume]
@@ -53,6 +62,16 @@ class ClaudeClient:
         if permission_mode:
             args += ["--permission-mode", permission_mode]
         return args
+
+    async def _write_json(self, proc: asyncio.subprocess.Process, obj: dict) -> None:
+        """Write one stream-json line to the process's stdin, tolerantly."""
+        if proc.stdin is None:
+            return
+        try:
+            proc.stdin.write((json.dumps(obj) + "\n").encode("utf-8"))
+            await proc.stdin.drain()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
 
     async def stream(
         self,
@@ -64,17 +83,20 @@ class ClaudeClient:
     ) -> AsyncIterator[dict]:
         """Run one turn and yield parsed events.
 
-        Synthetic events ``{"type": "_spawn-error"|"_error", ...}`` are emitted
-        for launch failures and non-zero exits so the UI can surface them.
+        A ``control_request`` (tool permission) is surfaced as a synthetic
+        ``{"type": "_permission", "request": <event>}`` event; the caller is
+        expected to answer it via :meth:`respond_permission` before consuming
+        the next event. Launch/exit failures arrive as ``_spawn-error`` /
+        ``_error`` events.
         """
-        args = self._build_args(prompt, model, permission_mode, resume)
+        args = self._build_args(model, permission_mode, resume)
         env = {**os.environ, "CLAUDE_CODE_ENTRYPOINT": "claude-tui"}
 
         try:
             proc = await asyncio.create_subprocess_exec(
                 *args,
                 cwd=self.cwd,
-                stdin=asyncio.subprocess.DEVNULL,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=env,
@@ -96,6 +118,18 @@ class ClaudeClient:
 
         stderr_task = asyncio.create_task(_drain_stderr())
 
+        # Send the user's turn as a stream-json message.
+        await self._write_json(
+            proc,
+            {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}],
+                },
+            },
+        )
+
         try:
             while True:
                 raw = await proc.stdout.readline()
@@ -105,15 +139,29 @@ class ClaudeClient:
                 if not text:
                     continue
                 try:
-                    yield json.loads(text)
+                    event = json.loads(text)
                 except json.JSONDecodeError:
-                    # Non-JSON noise on stdout — pass it through as a notice.
                     yield {"type": "_stdout", "text": text}
+                    continue
 
-            # stdout reached EOF: reap the process and report a non-zero exit.
-            # This stays OUTSIDE ``finally`` on purpose — yielding while a
-            # generator is being closed (cancel/exception) raises GeneratorExit,
-            # which would skip the cleanup below and wedge ``is_running`` True.
+                if event.get("type") == "control_request":
+                    # Permission/elicitation request — hand it to the UI.
+                    yield {"type": "_permission", "request": event}
+                    continue
+
+                yield event
+                if event.get("type") == "result":
+                    # One turn per process: stop reading once the turn resolves.
+                    break
+
+            # Close stdin so the streaming-input process exits, then reap it.
+            # Kept OUTSIDE ``finally`` so a yield during cancel can't skip the
+            # cleanup that clears ``_proc`` (which would wedge ``is_running``).
+            if proc.stdin is not None and not proc.stdin.is_closing():
+                try:
+                    proc.stdin.close()
+                except Exception:
+                    pass
             await proc.wait()
             await stderr_task
             if proc.returncode not in (0, None):
@@ -123,8 +171,6 @@ class ClaudeClient:
                     "stderr": stderr_buf.decode("utf-8", "replace").strip(),
                 }
         finally:
-            # Runs on normal completion AND when the consumer cancels/closes the
-            # generator. No ``yield`` here, so cleanup always completes.
             if proc.returncode is None:
                 try:
                     proc.terminate()
@@ -134,6 +180,39 @@ class ClaudeClient:
                 stderr_task.cancel()
             if self._proc is proc:
                 self._proc = None
+
+    async def respond_permission(
+        self,
+        request_id: str,
+        *,
+        allow: bool,
+        updated_input: dict | None = None,
+        message: str | None = None,
+    ) -> None:
+        """Answer a ``can_use_tool`` control request over stdin.
+
+        Allow must echo the (possibly edited) tool input back as
+        ``updatedInput`` — without it the CLI reports a validation error and
+        the tool never runs.
+        """
+        proc = self._proc
+        if proc is None or proc.stdin is None or proc.stdin.is_closing():
+            return
+        if allow:
+            inner = {"behavior": "allow", "updatedInput": updated_input or {}}
+        else:
+            inner = {"behavior": "deny", "message": message or "Denied by the user."}
+        await self._write_json(
+            proc,
+            {
+                "type": "control_response",
+                "response": {
+                    "subtype": "success",
+                    "request_id": request_id,
+                    "response": inner,
+                },
+            },
+        )
 
     def cancel(self) -> bool:
         """Terminate the in-flight turn, if any. Returns True if it acted."""

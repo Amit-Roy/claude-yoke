@@ -25,6 +25,7 @@ from .widgets.chat import ChatPanel
 from .widgets.editor import EditorScreen
 from .widgets.files_tree import FilesTree
 from .widgets.info_panels import AgentsPanel, TokensPanel
+from .widgets.permission import PermissionScreen
 from .widgets.sessions_list import SessionsList
 from .widgets.splitter import Splitter
 
@@ -56,6 +57,8 @@ class ClaudeTUI(App):
         # lifecycle rather than to subprocess bookkeeping — so the composer can
         # never get permanently wedged if the process state goes sideways.
         self._turn_active = False
+        # Tools the user approved for the rest of this session (skip re-asking).
+        self._allowed_tools: set[str] = set()
 
     # --------------------------------------------------------------------- #
     #  Composition
@@ -133,6 +136,7 @@ class ClaudeTUI(App):
         self.client.session_id = None
         self._turn_active = False
         self._task_ids.clear()
+        self._allowed_tools.clear()
         self.chat.clear()
         self.chat.show_welcome()
         self.chat.add_system("Started a new session.")
@@ -184,6 +188,9 @@ class ClaudeTUI(App):
                 permission_mode=chat.permission_mode,
                 resume=self.client.session_id,
             ):
+                if event.get("type") == "_permission":
+                    await self._handle_permission(event.get("request") or {})
+                    continue
                 ok = self._handle_event(event) and ok
         except Exception as exc:  # noqa: BLE001 — surface anything to the UI
             chat.add_system(f"stream error: {exc}", error=True)
@@ -193,6 +200,38 @@ class ClaudeTUI(App):
             agents.stop_main(ok=ok)
             chat.set_busy(False)
             self.query_one("#prompt").focus()
+
+    async def _handle_permission(self, ctrl: dict) -> None:
+        """Surface a ``can_use_tool`` request and answer it over the wire."""
+        req = ctrl.get("request") or {}
+        request_id = str(ctrl.get("request_id", ""))
+        tool = str(req.get("tool_name", "tool"))
+        tool_input = req.get("input") or {}
+        description = str(req.get("description", ""))
+
+        # Honour an earlier "allow for session" choice without re-asking.
+        if tool in self._allowed_tools:
+            await self.client.respond_permission(
+                request_id, allow=True, updated_input=tool_input
+            )
+            return
+
+        decision = await self.push_screen_wait(
+            PermissionScreen(tool, tool_input, description)
+        )
+        if decision in ("allow", "allow_session"):
+            if decision == "allow_session":
+                self._allowed_tools.add(tool)
+            await self.client.respond_permission(
+                request_id, allow=True, updated_input=tool_input
+            )
+            note = f"approved {tool}"
+            self.chat.add_system(note + (" · session" if decision == "allow_session" else ""))
+        else:
+            await self.client.respond_permission(
+                request_id, allow=False, message="Denied by the user in Claude Yoke."
+            )
+            self.chat.add_system(f"denied {tool}", error=True)
 
     def _handle_event(self, event: dict) -> bool:
         """Dispatch one CLI event to the panels. Returns False on error events."""

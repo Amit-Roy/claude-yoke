@@ -7,6 +7,9 @@ JSON-parsing path without spending any API tokens.
 import json
 import sys
 
+# Streaming-input mode: wait for the user's turn on stdin before replying.
+sys.stdin.readline()
+
 EVENTS = [
     {"type": "system", "subtype": "init", "session_id": "fake-123",
      "model": "claude-test", "tools": ["Read", "Bash"], "permissionMode": "default"},

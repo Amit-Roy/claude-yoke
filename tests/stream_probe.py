@@ -21,7 +21,7 @@ FAKE = Path(__file__).resolve().parent / "fake_cli.py"
 class FakeClient(ClaudeClient):
     """Routes ``stream()`` at the fake CLI instead of the real one."""
 
-    def _build_args(self, prompt, model, permission_mode, resume):
+    def _build_args(self, model, permission_mode, resume):
         return [sys.executable, str(FAKE)]
 
 
