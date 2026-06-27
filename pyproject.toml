@@ -1,12 +1,14 @@
 [project]
-name = "claude-tui"
+name = "claude-yoke"
 version = "0.1.0"
-description = "A terminal UI for Claude Code — multi-pane chat, sessions browser, token & agent panels."
+description = "Claude Yoke — a terminal UI (TUI) for Claude Code: multi-pane chat, sessions browser, live token gauge and agents panel."
+readme = "README.md"
 requires-python = ">=3.10"
+keywords = ["claude", "claude-code", "tui", "terminal", "textual", "ai", "coding-agent", "cli", "dashboard"]
 dependencies = ["textual>=0.80"]
 
 [project.scripts]
-claude-tui = "claude_tui.app:main"
+claude-yoke = "claude_tui.app:main"
 
 [build-system]
 requires = ["setuptools>=68"]

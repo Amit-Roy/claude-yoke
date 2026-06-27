@@ -1,11 +1,50 @@
-# Claude TUI
+# Claude Yoke — a Terminal UI (TUI) for Claude Code
 
-A multi-pane **terminal UI for Claude Code**. It drives the real `claude` CLI
-as its engine (via streaming JSON), so you get Claude Code's actual tools, MCP
-servers, permissions and session storage — wrapped in a keyboard- and
-mouse-friendly dashboard.
+**Claude Yoke** is a multi-pane **terminal UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code)**,
+Anthropic's AI coding agent. It drives the real `claude` CLI as its engine (via
+streaming JSON), so you get Claude Code's actual tools, MCP servers, permissions
+and session storage — wrapped in a fast, keyboard- and mouse-friendly dashboard
+in your terminal.
 
-![screenshot](docs/screenshot.png)
+Think of it as the **yoke** — the control column you grip to fly the agent:
+watch your token budget on a live fuel gauge, see running subagents as status
+lights, browse and resume past sessions, and edit your `.claude` config without
+leaving the terminal.
+
+![Claude Yoke screenshot — a terminal UI dashboard for Claude Code with a token gauge, agents panel, and chat transcript](docs/screenshot.png)
+
+> Keywords: Claude Code TUI · terminal UI for Claude · Claude Code dashboard ·
+> AI coding agent terminal client · Textual Python TUI · Claude CLI wrapper ·
+> token usage monitor · agent cockpit.
+
+## Why Claude Yoke?
+
+Claude Code is excellent in a bare terminal, but a single scrolling log hides the
+things you actually want at a glance: how much context you've burned, which
+subagents are running, and which past session to resume. Claude Yoke puts those
+on dedicated instruments while keeping the **real** Claude Code engine underneath
+— no API re-implementation, no lost features.
+
+## Features
+
+- **Live token gauge** — a context-window fuel bar with authoritative token and
+  cost numbers from the CLI's own `result` events, plus a live estimate while a
+  turn streams.
+- **Agents panel** — the in-flight turn and any `Task` subagents shown as status
+  lights (● running / ✓ done) with elapsed time.
+- **Session browser** — every session for the current project, with title, model,
+  duration, size, message count and context tokens; select one to replay its
+  transcript and **resume** the conversation.
+- **`.claude` file editor** — a directory tree of your `~/.claude` config with a
+  built-in modal editor (Ctrl+S to save).
+- **Full transcript rendering** — text, thinking, tool calls and tool results,
+  identical for live and replayed sessions.
+- **Model & permission switching** — dropdowns mapped straight onto
+  `claude --model` / `claude --permission-mode`.
+- **Distinctive "Cockpit" theme** — a deliberate instrument-panel visual identity
+  (see below), not a default dark theme.
+- **Emoji-free, font-safe** — uses only glyphs in common terminal fonts so it
+  renders cleanly everywhere.
 
 ## Layout
 
@@ -23,9 +62,17 @@ mouse-friendly dashboard.
 └────────────┴──────────────────┴───────────────────────────┘
 ```
 
-The UI is deliberately emoji-free: it uses only glyphs present in common
-terminal fonts (box-drawing, arrows, `●✓✗`, block bars) so it renders cleanly
-everywhere, including in the exported SVG/PNG above.
+* **Activity bar (left pane).** A vertical stack of buttons, driven by an
+  extensible registry (`widgets/activity_bar.py → VIEWS`). Ships with **Chat
+  Sessions** and **.claude Files**; adding another destination is one entry plus
+  a matching widget in the sidebar's `ContentSwitcher`.
+* **Sidebar.** Switches between the **session browser** and the **`.claude` file
+  tree** (click any file to edit it in a modal; Ctrl+S saves, Esc closes).
+* **Tokens panel.** Live context-window gauge, last-turn ↑/↓, cumulative session
+  output, and cost.
+* **Agents panel.** The in-flight turn plus any `Task` subagents.
+* **Main chat (right half).** Model + permission-mode selectors, the transcript,
+  and the composer.
 
 ### Visual identity — "Cockpit"
 
@@ -41,26 +88,9 @@ colour carries meaning rather than decoration (defined in `theme.py`):
 The **signature** is the token gauge: a zone-coloured fuel bar (green → amber →
 red across its length, with sub-cell precision and `▏ ▕` end-caps). Section
 labels are quiet muted eyebrows with a small amber index tab `▍`, so the *data*
-is what lights up, not the chrome.
-
-* **Activity bar (left pane).** A vertical stack of buttons, driven by an
-  extensible registry (`widgets/activity_bar.py → VIEWS`). Ships with **Chat
-  Sessions** and **.claude Files**; adding another destination is one entry plus
-  a matching widget in the sidebar's `ContentSwitcher`.
-* **Sidebar.** Switches between:
-  * **Sessions** — every session for the current project
-    (`~/.claude/projects/<encoded-cwd>`), each row showing **title, model,
-    duration, size, message count, context tokens and last-updated**. Select one
-    to replay its transcript and resume the conversation.
-  * **.claude files** — a directory tree of `~/.claude`; click any file to open
-    it in a modal editor (Ctrl+S saves, Esc closes).
-* **Tokens panel.** Live context-window gauge, last-turn ↑/↓, cumulative session
-  output, and cost — authoritative numbers come from the CLI's own `result`
-  events, with a live char-based estimate while a turn streams.
-* **Agents panel.** The in-flight turn plus any **`Task` subagents**, with live
-  status (● running / ✓ done) and elapsed time.
-* **Main chat (right half).** Model + permission-mode selectors, the transcript,
-  and the composer.
+is what lights up, not the chrome. The UI is deliberately emoji-free: it uses only
+glyphs present in common terminal fonts (box-drawing, arrows, `●✓✗`, block bars)
+so it renders cleanly everywhere, including in the exported SVG/PNG above.
 
 ## Requirements
 
@@ -69,12 +99,16 @@ is what lights up, not the chrome.
   sessions and editing files works without it; only *sending* needs it.
 * [Textual](https://textual.textualize.io/) (installed automatically below).
 
-## Run
+## Install & run
 
 ```powershell
 # Windows (PowerShell) — creates .venv and installs deps on first run
-./run.ps1
+.\run.ps1
 ```
+
+> On Windows, run it from a **PowerShell** prompt with the leading `.\`. Typing
+> `run.ps1` in **cmd.exe** opens the file in Notepad instead of executing it.
+> From cmd: `powershell -ExecutionPolicy Bypass -File run.ps1`.
 
 ```bash
 # or manually, any platform
@@ -168,3 +202,15 @@ yield SettingsView(id="settings")
 
 That's it — the bar builds its buttons from `VIEWS` and the switcher routes to
 the matching id.
+
+## FAQ
+
+**Is this an official Anthropic project?** No — it's an independent open-source
+client that wraps the official `claude` CLI. "Claude" and "Claude Code" are
+Anthropic products.
+
+**Does it re-implement the Claude API?** No. It shells out to the real `claude`
+CLI, so tools, MCP servers, permissions and session files are exactly Claude
+Code's.
+
+**Which platforms?** Anywhere Python and Textual run — Windows, macOS and Linux.
