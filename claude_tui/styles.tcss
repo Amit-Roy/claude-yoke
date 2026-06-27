@@ -278,3 +278,59 @@ PermissionScreen {
     margin-top: 1;
     color: $text-muted;
 }
+
+/* ---- question modal (AskUserQuestion) ----------------------------------- */
+QuestionScreen {
+    align: center middle;
+}
+
+#ask-box {
+    width: 76%;
+    max-width: 100;
+    height: auto;
+    max-height: 80%;
+    background: $panel;
+    border: thick #FFB454;
+    padding: 1 2;
+}
+
+#ask-title {
+    margin-bottom: 1;
+}
+
+#ask-body {
+    height: auto;
+    max-height: 24;
+}
+
+.ask-q {
+    height: auto;
+    margin-top: 1;
+}
+
+.ask-options {
+    height: auto;
+    margin-top: 1;
+}
+
+.ask-options Button {
+    width: auto;
+    margin-right: 2;
+}
+
+.ask-descs {
+    height: auto;
+    color: $text-muted;
+    padding: 0 1;
+    border-left: thick #2A323C;
+}
+
+#ask-buttons {
+    height: auto;
+    margin-top: 1;
+    align: left middle;
+}
+
+#ask-buttons Button {
+    margin-right: 2;
+}

@@ -42,6 +42,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
 - **Tool-permission prompts** — when Claude needs approval for a tool, a dialog
   bubbles up (Allow once / Allow for session / Deny) instead of the request
   being silently auto-denied.
+- **Interactive questions** — when Claude uses `AskUserQuestion`, its
+  multiple-choice question pops up and your selection is sent back as the
+  answer, so the agent can ask you things mid-task.
 - **Model & permission switching** — dropdowns mapped straight onto
   `claude --model` / `claude --permission-mode`.
 - **Distinctive "Cockpit" theme** — a deliberate instrument-panel visual identity
@@ -156,7 +159,9 @@ turn to its **stdin** as a stream-json `user` message (keeping stdin open), and
 reads stdout line by line yielding each JSON event. Because stdin stays open, the
 CLI can ask to use a tool mid-turn: it sends a `control_request`, the app pops a
 `PermissionScreen`, and the answer goes back as a `control_response` — so
-**questions actually bubble up** instead of being silently auto-denied. `app.py`
+**questions actually bubble up** instead of being silently auto-denied. An
+`AskUserQuestion` request routes to a `QuestionScreen` instead, and the chosen
+option is returned to the tool via `updatedInput.answers`. `app.py`
 dispatches the rest to the panels: `system/init` captures the session id (for
 `--resume`), `assistant` blocks render text / thinking / tool calls and feed the
 token gauge, `Task` tool calls populate the Agents panel, and `result` commits
@@ -181,14 +186,17 @@ claude_tui/
     chat.py           # toolbar + transcript + composer
     editor.py         # modal file editor
     permission.py     # modal tool-permission prompt (allow / deny)
+    question.py       # modal AskUserQuestion prompt (pick an option)
     splitter.py       # draggable divider to resize the panes
   styles.tcss         # layout + theme
 tests/
   smoke_test.py       # headless: compose, view switching, event handling
   stream_probe.py     # real subprocess streaming against a fake CLI
   perm_probe.py       # tool-permission control protocol (allow/deny/session)
+  ask_probe.py        # AskUserQuestion control protocol (answer/skip)
   fake_cli.py         # stand-in CLI emitting stream-json events
   fake_perm_cli.py    # stand-in CLI that drives the permission control protocol
+  fake_ask_cli.py     # stand-in CLI that drives the AskUserQuestion protocol
   layout_probe.py     # asserts pane geometry, writes screenshot.svg
   showcase.py         # drives a realistic state, writes the docs screenshot
 ```
@@ -199,6 +207,7 @@ tests/
 .venv/Scripts/python tests/smoke_test.py
 .venv/Scripts/python tests/stream_probe.py
 .venv/Scripts/python tests/perm_probe.py
+.venv/Scripts/python tests/ask_probe.py
 .venv/Scripts/python tests/layout_probe.py
 ```
 

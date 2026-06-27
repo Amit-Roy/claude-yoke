@@ -26,6 +26,7 @@ from .widgets.editor import EditorScreen
 from .widgets.files_tree import FilesTree
 from .widgets.info_panels import AgentsPanel, TokensPanel
 from .widgets.permission import PermissionScreen
+from .widgets.question import QuestionScreen
 from .widgets.sessions_list import SessionsList
 from .widgets.splitter import Splitter
 
@@ -209,6 +210,11 @@ class ClaudeTUI(App):
         tool_input = req.get("input") or {}
         description = str(req.get("description", ""))
 
+        # AskUserQuestion isn't an approve/deny — it's a question to answer.
+        if tool == "AskUserQuestion":
+            await self._handle_question(request_id, tool_input)
+            return
+
         # Honour an earlier "allow for session" choice without re-asking.
         if tool in self._allowed_tools:
             await self.client.respond_permission(
@@ -232,6 +238,27 @@ class ClaudeTUI(App):
                 request_id, allow=False, message="Denied by the user in Claude Yoke."
             )
             self.chat.add_system(f"denied {tool}", error=True)
+
+    async def _handle_question(self, request_id: str, tool_input: dict) -> None:
+        """Present an AskUserQuestion prompt and feed the answer back."""
+        questions = tool_input.get("questions") or []
+        answers = await self.push_screen_wait(QuestionScreen(questions))
+        if answers:
+            # Echo the input back with the answers filled in — this is how the
+            # tool receives the user's choice (verified against the real CLI).
+            updated = {**tool_input, "answers": answers}
+            await self.client.respond_permission(
+                request_id, allow=True, updated_input=updated
+            )
+            summary = " · ".join(f"{k} = {v}" for k, v in answers.items())
+            self.chat.add_system(f"answered: {summary}")
+        else:
+            # Skipped: let the tool run with no answers so the agent is told the
+            # question went unanswered (rather than hanging).
+            await self.client.respond_permission(
+                request_id, allow=True, updated_input=tool_input
+            )
+            self.chat.add_system("question skipped")
 
     def _handle_event(self, event: dict) -> bool:
         """Dispatch one CLI event to the panels. Returns False on error events."""

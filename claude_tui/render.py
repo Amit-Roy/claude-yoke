@@ -74,15 +74,21 @@ def system_message(text: str, *, error: bool = False) -> RenderableType:
 
 
 def tool_call(name: str, tool_input: dict) -> RenderableType:
-    key = _TOOL_KEY_ARG.get(name)
     summary = ""
-    if key and isinstance(tool_input, dict) and key in tool_input:
-        value = tool_input[key]
-        summary = _truncate(value if isinstance(value, str) else str(value), 200)
-    elif tool_input:
-        summary = _truncate(", ".join(f"{k}={v}" for k, v in tool_input.items()), 200)
+    if name == "AskUserQuestion" and isinstance(tool_input, dict):
+        questions = tool_input.get("questions") or []
+        first = questions[0].get("question", "") if questions else ""
+        extra = f"  (+{len(questions) - 1} more)" if len(questions) > 1 else ""
+        summary = _truncate(str(first), 180) + extra
+    else:
+        key = _TOOL_KEY_ARG.get(name)
+        if key and isinstance(tool_input, dict) and key in tool_input:
+            value = tool_input[key]
+            summary = _truncate(value if isinstance(value, str) else str(value), 200)
+        elif tool_input:
+            summary = _truncate(", ".join(f"{k}={v}" for k, v in tool_input.items()), 200)
 
-    marker = "agent" if name == "Task" else "tool"
+    marker = "agent" if name == "Task" else "ask" if name == "AskUserQuestion" else "tool"
     body = Text()
     body.append(f"{marker} ", style=f"dim {NOMINAL}")
     body.append(name, style=f"bold {NOMINAL}")
