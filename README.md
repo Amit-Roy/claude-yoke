@@ -74,8 +74,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
   a matching widget in the sidebar's `ContentSwitcher`.
 * **Sidebar.** Switches between the **session browser** and the **project file
   tree** (click any file to edit it in a modal; Ctrl+S saves, Esc closes).
-* **Tokens panel.** Live context-window gauge, last-turn ↑/↓, cumulative session
-  output, and cost.
+* **Tokens panel.** Live context-window gauge, last-turn ↑/↓, the current turn's
+  **extended-thinking token count** (from the CLI's `thinking_tokens` events),
+  cumulative session output, and cost.
 * **Agents panel.** The in-flight turn plus any `Task` subagents.
 * **Main chat (right half).** Model + permission-mode selectors, the transcript,
   and the composer.

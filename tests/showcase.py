@@ -68,6 +68,7 @@ async def run() -> None:
         tokens.commit_turn(8_858, 0.1183)
         tokens.stats.context_tokens = 144_000
         tokens.stats.last_in = 144_000
+        tokens.note_thinking(2_412)
         tokens.refresh_body()
 
         # Two live status lights: the main turn and an Explore subagent.

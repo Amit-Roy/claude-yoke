@@ -94,6 +94,12 @@ async def run() -> None:
         await pilot.pause()
         check("tokens panel recorded context", app.tokens.stats.context_tokens == 15000)
         check("live output estimate grew while streaming", app.tokens.stats.live_out > 0)
+
+        # Extended-thinking token counter (system/thinking_tokens events).
+        app._handle_event({"type": "system", "subtype": "thinking_tokens",
+                           "estimated_tokens": 64, "estimated_tokens_delta": 64})
+        await pilot.pause()
+        check("thinking token count surfaced", app.tokens.stats.thinking == 64)
         check("Task registered as running agent", "tu_1" in app.agents._rows)
         check("agent is marked running", app.agents._rows["tu_1"].running)
 

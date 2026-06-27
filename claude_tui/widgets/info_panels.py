@@ -86,6 +86,7 @@ class TokenStats:
     live_out: int = 0  # rough estimate of the in-flight turn's output
     session_cost: float = 0.0  # authoritative, summed from result events
     pending: int = 0  # estimate of the not-yet-sent composer text
+    thinking: int = 0  # the current turn's extended-thinking token count
 
     def estimated_turn_cost(self) -> float:
         in_price, out_price = price_for_model(self.model)
@@ -143,6 +144,20 @@ class TokensPanel(Vertical):
         self.stats.live_out += max(0, len(text) // 4)
         self.refresh_body()
 
+    def note_thinking(self, estimated_tokens: int) -> None:
+        """Update the live extended-thinking token count for this turn.
+
+        The CLI emits ``system``/``thinking_tokens`` events whose
+        ``estimated_tokens`` is the running total for the turn.
+        """
+        self.stats.thinking = max(self.stats.thinking, int(estimated_tokens or 0))
+        self.refresh_body()
+
+    def clear_thinking(self) -> None:
+        """Reset the thinking counter at the start of a new turn."""
+        self.stats.thinking = 0
+        self.refresh_body()
+
     def commit_turn(self, output_tokens: int, cost_usd: float | None) -> None:
         """Fold an authoritative ``result`` event into the session totals."""
         if output_tokens:
@@ -189,6 +204,12 @@ class TokensPanel(Vertical):
         if s.live_out:
             turn.append(" live", style=f"dim {AMBER}")
         lines.append(turn)
+
+        if s.thinking:
+            think = Text()
+            think.append("think ", style=MUTED)
+            think.append(f"~{_k(s.thinking)} tok", style=NOMINAL)
+            lines.append(think)
 
         sess = Text()
         sess.append("sess  ", style=MUTED)

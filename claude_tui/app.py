@@ -180,6 +180,7 @@ class ClaudeTUI(App):
         chat.set_busy(True)
         tokens.set_model(model)
         tokens.set_pending("")
+        tokens.clear_thinking()
         agents.start_main(model if model != "default" else "claude")
         ok = True
         try:
@@ -268,6 +269,9 @@ class ClaudeTUI(App):
             sid = event.get("session_id")
             if sid:
                 self.client.session_id = sid
+            if event.get("subtype") == "thinking_tokens":
+                self.tokens.note_thinking(event.get("estimated_tokens", 0))
+                return True
             if event.get("subtype") == "init":
                 tools = event.get("tools") or []
                 self.chat.add_system(
