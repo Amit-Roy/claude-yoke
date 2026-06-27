@@ -109,7 +109,11 @@ class ClaudeClient:
                 except json.JSONDecodeError:
                     # Non-JSON noise on stdout — pass it through as a notice.
                     yield {"type": "_stdout", "text": text}
-        finally:
+
+            # stdout reached EOF: reap the process and report a non-zero exit.
+            # This stays OUTSIDE ``finally`` on purpose — yielding while a
+            # generator is being closed (cancel/exception) raises GeneratorExit,
+            # which would skip the cleanup below and wedge ``is_running`` True.
             await proc.wait()
             await stderr_task
             if proc.returncode not in (0, None):
@@ -118,6 +122,16 @@ class ClaudeClient:
                     "returncode": proc.returncode,
                     "stderr": stderr_buf.decode("utf-8", "replace").strip(),
                 }
+        finally:
+            # Runs on normal completion AND when the consumer cancels/closes the
+            # generator. No ``yield`` here, so cleanup always completes.
+            if proc.returncode is None:
+                try:
+                    proc.terminate()
+                except ProcessLookupError:
+                    pass
+            if not stderr_task.done():
+                stderr_task.cancel()
             if self._proc is proc:
                 self._proc = None
 

@@ -141,12 +141,22 @@ SessionItem.-highlight {
     background: $panel;
 }
 
+/* ---- drag handle: left column ⇆ chat (mouse-resizable) ------------------ */
+#main-splitter {
+    width: 1;
+    height: 1fr;
+    background: #2A323C;
+}
+
+#main-splitter:hover, #main-splitter.-dragging {
+    background: #FFB454;
+}
+
 /* ---- right half: the conversation viewport ------------------------------ */
 #main {
     width: 1fr;
     layout: vertical;
     min-width: 40;
-    border-left: solid #2A323C;
 }
 
 #chat-toolbar {

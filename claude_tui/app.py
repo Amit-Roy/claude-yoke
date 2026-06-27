@@ -26,12 +26,13 @@ from .widgets.editor import EditorScreen
 from .widgets.files_tree import FilesTree
 from .widgets.info_panels import AgentsPanel, TokensPanel
 from .widgets.sessions_list import SessionsList
+from .widgets.splitter import Splitter
 
 
 class ClaudeTUI(App):
     """A multi-pane terminal front-end for the ``claude`` CLI."""
 
-    TITLE = "Claude TUI"
+    TITLE = "Claude Yoke"
     SUB_TITLE = "a terminal UI for Claude Code"
     CSS_PATH = "styles.tcss"
 
@@ -51,6 +52,10 @@ class ClaudeTUI(App):
         self.client = ClaudeClient(cli_path=cli or "claude", cwd=str(self.cwd))
         self._cli_available = cli is not None
         self._task_ids: set[str] = set()
+        # Authoritative "a turn is in flight" flag, tied to the worker's
+        # lifecycle rather than to subprocess bookkeeping — so the composer can
+        # never get permanently wedged if the process state goes sideways.
+        self._turn_active = False
 
     # --------------------------------------------------------------------- #
     #  Composition
@@ -65,6 +70,7 @@ class ClaudeTUI(App):
                     yield FilesTree(self.cwd, id="files")
                 yield TokensPanel(id="tokens-panel")
                 yield AgentsPanel(id="agents-panel")
+            yield Splitter("left-column", axis="x", min_size=30, sibling_min=44, id="main-splitter")
             yield ChatPanel(id="main")
         yield Footer()
 
@@ -125,6 +131,7 @@ class ClaudeTUI(App):
     def action_new_session(self) -> None:
         self.client.cancel()
         self.client.session_id = None
+        self._turn_active = False
         self._task_ids.clear()
         self.chat.clear()
         self.chat.show_welcome()
@@ -154,9 +161,10 @@ class ClaudeTUI(App):
         if not self._cli_available:
             self.chat.add_system("Cannot send: claude CLI not found.", error=True)
             return
-        if self.client.is_running:
+        if self._turn_active:
             self.chat.add_system("A turn is already running — Stop it first.", error=True)
             return
+        self._turn_active = True
         self.chat.add_user(message.text)
         self._run_turn(message.text)
 
@@ -181,6 +189,7 @@ class ClaudeTUI(App):
             chat.add_system(f"stream error: {exc}", error=True)
             ok = False
         finally:
+            self._turn_active = False
             agents.stop_main(ok=ok)
             chat.set_busy(False)
             self.query_one("#prompt").focus()

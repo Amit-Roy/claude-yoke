@@ -47,7 +47,7 @@ class ActivityBar(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[{AMBER}]▍[/] [bold {AMBER}]CLAUDE[/] [{MUTED}]tui[/]", id="brand"
+            f"[{AMBER}]▍[/] [bold {AMBER}]CLAUDE[/] [{MUTED}]yoke[/]", id="brand"
         )
         for view in VIEWS:
             button = Button(view.label, id=f"view-{view.id}", classes="view-button")

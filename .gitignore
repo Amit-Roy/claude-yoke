@@ -1,5 +1,6 @@
 # Local harness / editor config
 .claude/
+.serena/
 
 # Python
 __pycache__/

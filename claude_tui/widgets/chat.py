@@ -95,7 +95,7 @@ class ChatPanel(Vertical):
         self.transcript.write(
             render.banner(
                 [
-                    "Welcome to Claude TUI.",
+                    "Welcome to Claude Yoke.",
                     "Pick a session on the left to resume it, or just type below to",
                     "start a new conversation. Subagents appear in the Agents panel,",
                     "live token usage in the Tokens panel.",

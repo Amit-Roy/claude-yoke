@@ -74,6 +74,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
 * **Main chat (right half).** Model + permission-mode selectors, the transcript,
   and the composer.
 
+**Resizing.** Drag the thin vertical divider between the sidebar column and the
+chat to rebalance the split (it lights up amber on hover).
+
 ### Visual identity — "Cockpit"
 
 The app is treated as an **instrument panel for driving an AI coding agent**, and
@@ -166,6 +169,7 @@ claude_tui/
     info_panels.py    # Tokens + Agents panels
     chat.py           # toolbar + transcript + composer
     editor.py         # modal file editor
+    splitter.py       # draggable divider to resize the panes
   styles.tcss         # layout + theme
 tests/
   smoke_test.py       # headless: compose, view switching, event handling
