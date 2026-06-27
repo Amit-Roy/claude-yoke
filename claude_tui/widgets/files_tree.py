@@ -1,4 +1,8 @@
-"""Sidebar view #2: a directory tree of ``~/.claude`` for quick editing."""
+"""Sidebar view #2: a directory tree of the project for quick editing.
+
+Rooted at the working directory so you can browse and open the actual project
+files (not just ``~/.claude``). Click any file to edit it in the modal editor.
+"""
 
 from __future__ import annotations
 
@@ -11,16 +15,33 @@ from textual.widgets import DirectoryTree, Static
 from ..theme import AMBER
 
 
-class ClaudeDirectoryTree(DirectoryTree):
-    """A directory tree that hides noise (caches, git, pycache)."""
+class ProjectDirectoryTree(DirectoryTree):
+    """A directory tree that hides build/VCS noise so files stay findable."""
 
-    _HIDE = {"__pycache__", ".git", "node_modules", "cache", "shell-snapshots"}
+    _HIDE = {
+        "__pycache__",
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".venv",
+        "venv",
+        "cache",
+        "shell-snapshots",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+    }
 
     def filter_paths(self, paths):
         return [
             p
             for p in paths
-            if p.name not in self._HIDE and not p.name.endswith(".lock")
+            if p.name not in self._HIDE
+            and not p.name.endswith((".lock", ".pyc"))
+            and not p.name.endswith(".egg-info")
         ]
 
 
@@ -36,6 +57,6 @@ class FilesTree(Vertical):
         super().__init__(**kwargs)
 
     def compose(self) -> ComposeResult:
-        label = str(self._root).replace(str(Path.home()), "~")
+        label = self._root.name or str(self._root)
         yield Static(f"[{AMBER}]▍[/] FILES [dim]{label}[/dim]", id="files-header")
-        yield ClaudeDirectoryTree(str(self._root), id="claude-dirtree")
+        yield ProjectDirectoryTree(str(self._root), id="claude-dirtree")

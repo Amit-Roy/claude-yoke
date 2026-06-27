@@ -30,7 +30,7 @@ class ViewDef:
 # The extensible registry. Order here is the order shown in the bar.
 VIEWS: list[ViewDef] = [
     ViewDef("sessions", "Chat Sessions", "Browse and resume past sessions"),
-    ViewDef("files", ".claude Files", "Open ~/.claude files for editing"),
+    ViewDef("files", "Project Files", "Browse and edit project files"),
     # Future: ViewDef("settings", "Settings"), ViewDef("agents", "Agents"), ...
 ]
 

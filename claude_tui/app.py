@@ -62,7 +62,7 @@ class ClaudeTUI(App):
             with Vertical(id="left-column"):
                 with ContentSwitcher(initial="sessions", id="sidebar-host"):
                     yield SessionsList(config.project_dir_for(self.cwd), id="sessions")
-                    yield FilesTree(config.CLAUDE_DIR, id="files")
+                    yield FilesTree(self.cwd, id="files")
                 yield TokensPanel(id="tokens-panel")
                 yield AgentsPanel(id="agents-panel")
             yield ChatPanel(id="main")

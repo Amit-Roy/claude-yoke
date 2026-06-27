@@ -8,7 +8,7 @@ in your terminal.
 
 Think of it as the **yoke** — the control column you grip to fly the agent:
 watch your token budget on a live fuel gauge, see running subagents as status
-lights, browse and resume past sessions, and edit your `.claude` config without
+lights, browse and resume past sessions, and edit your project files without
 leaving the terminal.
 
 ![Claude Yoke screenshot — a terminal UI dashboard for Claude Code with a token gauge, agents panel, and chat transcript](docs/screenshot.png)
@@ -35,8 +35,8 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
 - **Session browser** — every session for the current project, with title, model,
   duration, size, message count and context tokens; select one to replay its
   transcript and **resume** the conversation.
-- **`.claude` file editor** — a directory tree of your `~/.claude` config with a
-  built-in modal editor (Ctrl+S to save).
+- **Project file editor** — a directory tree of the project (build/VCS noise
+  filtered out) with a built-in modal editor (Ctrl+S to save).
 - **Full transcript rendering** — text, thinking, tool calls and tool results,
   identical for live and replayed sessions.
 - **Model & permission switching** — dropdowns mapped straight onto
@@ -53,9 +53,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
 │ Activity   │ Sidebar (switch) │  Main Chat  (right half)   │
 │ Bar        │  SESSIONS        │   model / permission bar   │
 │            │   list+metadata  │   transcript               │
-│ Chat       │  (or .claude     │   (text · thinking ·       │
+│ Chat       │  (or project     │   (text · thinking ·       │
 │ Sessions   │   file tree)     │    tool calls · results)   │
-│ .claude    ├──────────────────┤                            │
+│ Project    ├──────────────────┤                            │
 │ Files      │  TOKENS (est.)   │                            │
 │ (extensible)├─────────────────┤   ──────────────────────   │
 │            │  AGENTS running  │   > message…      [Send]   │
@@ -64,9 +64,9 @@ on dedicated instruments while keeping the **real** Claude Code engine underneat
 
 * **Activity bar (left pane).** A vertical stack of buttons, driven by an
   extensible registry (`widgets/activity_bar.py → VIEWS`). Ships with **Chat
-  Sessions** and **.claude Files**; adding another destination is one entry plus
+  Sessions** and **Project Files**; adding another destination is one entry plus
   a matching widget in the sidebar's `ContentSwitcher`.
-* **Sidebar.** Switches between the **session browser** and the **`.claude` file
+* **Sidebar.** Switches between the **session browser** and the **project file
   tree** (click any file to edit it in a modal; Ctrl+S saves, Esc closes).
 * **Tokens panel.** Live context-window gauge, last-turn ↑/↓, cumulative session
   output, and cost.
@@ -162,7 +162,7 @@ claude_tui/
   widgets/
     activity_bar.py   # extensible left-pane button registry
     sessions_list.py  # sessions browser with metadata
-    files_tree.py     # ~/.claude directory tree
+    files_tree.py     # project directory tree
     info_panels.py    # Tokens + Agents panels
     chat.py           # toolbar + transcript + composer
     editor.py         # modal file editor
@@ -190,7 +190,7 @@ None of the tests call the real API.
 # widgets/activity_bar.py
 VIEWS = [
     ViewDef("sessions", "Chat Sessions"),
-    ViewDef("files",    ".claude Files"),
+    ViewDef("files",    "Project Files"),
     ViewDef("settings", "Settings"),   # 1) add here
 ]
 ```
