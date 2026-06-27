@@ -1,0 +1,16 @@
+# Local harness / editor config
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Render scratch / artifacts
+screenshot.svg
+showcase.svg
+tests/_wrap*.html
+tests/render_*.png
