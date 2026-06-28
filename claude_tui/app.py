@@ -368,6 +368,7 @@ class ClaudeTUI(App):
             input_tokens=self.tokens.stats.context_tokens,
             output_tokens=out or self.tokens.stats.last_out,
             cost_usd=cost,
+            thinking_tokens=self.tokens.stats.thinking,
         )
         return event.get("subtype") != "error"
 

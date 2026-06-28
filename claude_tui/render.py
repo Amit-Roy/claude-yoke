@@ -110,11 +110,19 @@ def tool_result(text: str, *, is_error: bool = False) -> RenderableType:
     return body
 
 
-def turn_footer(*, input_tokens: int, output_tokens: int, cost_usd: float | None) -> RenderableType:
+def turn_footer(
+    *,
+    input_tokens: int,
+    output_tokens: int,
+    cost_usd: float | None,
+    thinking_tokens: int = 0,
+) -> RenderableType:
     parts = Text()
     parts.append("  ── turn complete", style=MUTED)
     parts.append(f"   ↑{input_tokens:,}", style=ICE)
     parts.append(f" ↓{output_tokens:,}", style=AMBER)
+    if thinking_tokens:
+        parts.append(f"   think ~{thinking_tokens:,}", style=NOMINAL)
     if cost_usd is not None:
         parts.append(f"   ${cost_usd:.4f}", style=AMBER)
     return parts

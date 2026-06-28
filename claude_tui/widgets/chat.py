@@ -121,11 +121,14 @@ class ChatPanel(Vertical):
     def add_system(self, text: str, *, error: bool = False) -> None:
         self.transcript.write(render.system_message(text, error=error))
 
-    def add_footer(self, *, input_tokens: int, output_tokens: int, cost_usd) -> None:
+    def add_footer(
+        self, *, input_tokens: int, output_tokens: int, cost_usd, thinking_tokens: int = 0
+    ) -> None:
         self.transcript.write(
             render.turn_footer(
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 cost_usd=cost_usd,
+                thinking_tokens=thinking_tokens,
             )
         )

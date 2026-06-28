@@ -54,7 +54,8 @@ async def run() -> None:
             "Task", {"subagent_type": "Explore", "description": "find token usages"}
         )
         chat.add_assistant("Wiring it up now — the gauge reads from `update_context`.")
-        chat.add_footer(input_tokens=144_000, output_tokens=8_858, cost_usd=0.1183)
+        chat.add_footer(input_tokens=144_000, output_tokens=8_858, cost_usd=0.1183,
+                        thinking_tokens=2_412)
 
         # Light the token gauge into the amber zone (~72%) and set readouts.
         tokens.update_context(
